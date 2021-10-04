@@ -1,0 +1,21 @@
+\documentclass[11pt]{article}
+
+\usepackage[round]{natbib}
+
+\usepackage{paralist}
+\renewenvironment{thebibliography}[1]{\let\par\relax%
+  \section*{\refname}\inparaitem}{\endinparaitem}
+\let\oldbibitem\bibitem
+\renewcommand{\bibitem}{\item[\textbullet]\oldbibitem}
+
+\begin{document}
+
+\title{CompactBib Minimal Working Example}
+\maketitle
+
+Let's cite \cite{kadofong2020a}. We can also use the cite+ commands \citep[e.g.][]{kadofong2020b}.
+
+Now let's add the bibliography (below):\\
+
+\input{pseudobib.tex}
+\end{document}
