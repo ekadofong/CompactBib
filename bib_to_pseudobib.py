@@ -1,42 +1,59 @@
 import sys
+import bibtexparser
 import re
 
-journal_mapping = {'aj':'AJ, ', 'apj':'ApJ, ', 'mnras':'MNRAS, ','arXiv e-prints':'arXiv:'}
+journal_mapping = {'\\aj':'AJ, ', '\\apj':'ApJ, ', '\\apjs': 'ApJS, ', '\\apjl':'ApJl, ', '\\aap': 'A\&A, ', '\\araa': 'ARA\&A, ', '\\mnras':'MNRAS, ',
+                   'arXiv e-prints':'arXiv:', '\\pasp':'PASP, ', 'Science': 'Science, ',
+                   'Classical and Quantum Gravity': 'Classical and Quantum Gravity, '}
 # \\ EXAMPLE OUTPUT
 # \\ \bibitem[{Kado-Fong {et~al.}(2021b)}]{kadofong2021b}
 # \\ Kado-Fong et al. 2021b, arXiv:2109.05034
-def parse ( entry, suffix=None ):
+def parse ( cd, suffix=None ):
     '''
     Convert bibtex entry to pseudobib entry
     '''
-    varname = re.findall( '(?<={).*(?=,)', entry.splitlines()[0])[0]
-    lines = (entry.splitlines()[1:])
-    cd = {}
-    for line in lines:
-        if '=' not in line:
-            continue
-        else:
-            key = re.findall ( '.*(?=\=)', line )[0].strip()            
-            value = re.findall ( '(?<=\=).*', line )[0]          
-            value = value.strip(' {},"\\')  
-            cd[key] = value
-    lastname = cd['author'].split(',')[0].strip('}')
+    varname = cd['ID']
+    authors = cd['author'].replace('\n', '')
+    auth_count = authors.count(' and ')+1
+    if auth_count == 1:
+        auth_name = authors.split(',')[0]
+    elif auth_count == 2:
+        auth_name = authors.split(',')[:2]
+        auth_name[1] = auth_name[1].split(' and ')[1]
+        auth_name = " \& ".join(auth_name)
+    else:
+        auth_name = "%s {et~al.}" % authors.split(',')[0]
     
     if suffix is None:
         if varname[-1].isdigit():
             suffix = ''
         else:
             suffix = varname[-1]
-            
-    # \\ separate format for e-prints
-    if cd['journal'] == 'arXiv e-prints':
-        ref = cd['pages']
+    
+    if 'journal' in cd.keys():
+        ref_type = 'journal'
+    elif 'booktitle' in cd.keys():
+        ref_type = 'booktitle'
+    elif 'title' in cd.keys():
+        ref_type = 'title'
     else:
-        ref = '%s%s, %s' % (journal_mapping[cd['journal']], cd['volume'], cd['pages'])
+        ref_type = None
 
-    output = r'''\bibitem[{%s {et~al.}(%s%s)}]{%s}
-%s et al. %s%s, %s
-''' % (lastname, cd['year'], suffix, varname, lastname, cd['year'], suffix, ref )
+    if ref_type is not None:
+        # \\ separate format for e-prints
+        if (cd['journal'] == 'arXiv e-prints' if ref_type=='journal' else False):
+            ref = cd['pages']
+        elif ref_type in ['journal', 'booktitle']:
+            ref = (journal_mapping[cd[ref_type]] if ref_type=='journal' else (cd[ref_type]+', '))+ \
+                  (cd['volume']+', ' if 'volume' in cd.keys() else '')+(cd['pages'] if 'pages' in cd.keys() else '')
+        else:
+            ref = cd[ref_type]
+    else:
+        ref = ''
+
+    output = r'''\bibitem[{%s(%s%s)}]{%s}
+%s %s%s, %s
+''' % (auth_name, cd['year'], suffix, varname, auth_name, cd['year'], suffix, ref )
     return output
 
 def make_biblist ( texfile ):
@@ -44,7 +61,7 @@ def make_biblist ( texfile ):
     Get list of used citations from .tex file
     '''
     with open(texfile, 'r') as f:  
-        contents = f.read()        
+        contents = re.sub(r"%.*\n", r"\n", f.read())        
         _citations = re.findall (r'(?<=\\cite).*?(?=})', contents) # \\ python requires fixed-width look-behinds
         _citations = [ cc.split('{')[1] for cc in _citations ] # \\ so I'll just look for the { start 
 
@@ -60,18 +77,16 @@ def get_bibentries ( citations, bibfile ):
     '''
     references = []
     with open(bibfile, 'r') as f:
-        bfile = f.read ()    
+        bib_data = bibtexparser.load(f)
         for varname in citations:
-            entry = re.findall( '{%s.*?(?=@|$)'%varname, bfile, re.DOTALL )
-            if len(entry) == 0:
+            if varname not in bib_data.entries_dict.keys():
                 print('[WARNING] no entry for %s. Skipping.' % varname)
                 continue
-            elif len(entry) > 1:
-                print ('[WARNING] Duplicate entries for %s? Ignoring duplicates.' % varname )
             else:
                 print(f'{varname} found' )
 
-            ref = parse ( entry[0] )
+            entry = bib_data.entries_dict[varname]
+            ref = parse ( entry )
             references.append(ref)
     return '\n'.join(references)
 
