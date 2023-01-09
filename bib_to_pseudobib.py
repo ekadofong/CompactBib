@@ -3,7 +3,7 @@ import bibtexparser
 import re
 
 journal_mapping = {'\\aj':'AJ, ', '\\apj':'ApJ, ', '\\apjs': 'ApJS, ', '\\apjl':'ApJl, ', '\\aap': 'A\&A, ', '\\araa': 'ARA\&A, ', '\\mnras':'MNRAS, ',
-                   'arXiv e-prints':'arXiv:', '\\pasp':'PASP, ', 'Science': 'Science, ',
+                   'arXiv e-prints':'arXiv:', '\\pasp':'PASP, ', 'Science': 'Science, ', '\\pasj':'PASJ',
                    'Classical and Quantum Gravity': 'Classical and Quantum Gravity, '}
 # \\ EXAMPLE OUTPUT
 # \\ \bibitem[{Kado-Fong {et~al.}(2021b)}]{kadofong2021b}
@@ -116,7 +116,7 @@ def compile ( texfile, bibfile, pseudobib_name='./pseudobib.tex' ):
         
 if __name__ == '__main__':
     if len(sys.argv) == 1 or (sys.argv[1] == '-h') or (sys.argv[1]=='--help'):
-        print ( 'usage: python3 bib_to_pseudobib PATH/TO/TEXFILE PATH/TO/BIBFILE <opt PATH/TO/OUTPUTNAME>' )
+        print ( 'usage: python3 bib_to_pseudobib.py PATH/TO/TEXFILE PATH/TO/BIBFILE <opt PATH/TO/OUTPUTNAME>' )
         sys.exit(0)
     compile (*sys.argv[1:])
     
